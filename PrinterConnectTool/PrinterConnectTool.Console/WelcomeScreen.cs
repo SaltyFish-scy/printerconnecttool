@@ -6,7 +6,7 @@ namespace PrinterConnectTool.ConsoleApp;
 public static class WelcomeScreen
 {
     private const string Version = "V2.3";
-    private const string Developer = "cysong4";
+    private const string Developer = "一条小咸鱼";
 
     /// <summary>
     ///     显示欢迎界面
