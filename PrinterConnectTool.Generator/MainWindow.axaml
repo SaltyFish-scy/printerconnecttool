@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="PrinterConnectTool.Generator.MainWindow"
-        Title="打印机连接生成器"
+        Title="打印机连接生成器 - 项目来源：Gitee-一条小咸鱼"
         Width="980"
         Height="680"
         MinWidth="800"
