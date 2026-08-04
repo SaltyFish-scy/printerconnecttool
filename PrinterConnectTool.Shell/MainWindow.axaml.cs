@@ -124,6 +124,32 @@ public partial class MainWindow : Window
 
             foreach (var printer in workplace.Printers)
             {
+                var gradientBrush = new LinearGradientBrush
+                {
+                    StartPoint = RelativePoint.TopLeft,
+                    EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+                    GradientStops =
+                    {
+                        new GradientStop(Color.Parse("#B3E5FC"), 0.0),
+                        new GradientStop(Color.Parse("#E6F6FF"), 0.20),
+                        new GradientStop(Color.Parse("#FFFFFF"), 0.25),
+                        new GradientStop(Color.Parse("#FFFFFF"), 1.0)
+                    }
+                };
+
+                var hoverBrush = new LinearGradientBrush
+                {
+                    StartPoint = RelativePoint.TopLeft,
+                    EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+                    GradientStops =
+                    {
+                        new GradientStop(Color.Parse("#81D4FA"), 0.0),
+                        new GradientStop(Color.Parse("#B3E5FC"), 0.20),
+                        new GradientStop(Color.Parse("#E1F5FE"), 0.25),
+                        new GradientStop(Color.Parse("#E1F5FE"), 1.0)
+                    }
+                };
+
                 var button = new Button
                 {
                     Content = $"{printer.Name}\nIP: {printer.Ip}",
@@ -134,8 +160,17 @@ public partial class MainWindow : Window
                     Padding = new Thickness(10, 6),
                     Margin = new Thickness(4),
                     FontSize = 12,
+                    Foreground = new SolidColorBrush(Color.Parse("#004C8C")),
+                    CornerRadius = new CornerRadius(10),
+                    Background = gradientBrush,
+                    BorderBrush = new SolidColorBrush(Color.Parse("#81D4FA")),
+                    BorderThickness = new Thickness(1),
                     Tag = printer
                 };
+
+                button.PointerEntered += (_, _) => button.Background = hoverBrush;
+                button.PointerExited += (_, _) => button.Background = gradientBrush;
+
                 button.Click += OnPrinterButtonClick;
                 PrintersPanel.Children.Add(button);
             }

@@ -6,6 +6,7 @@
         Height="540"
         MinWidth="560"
         MinHeight="420"
+        Background="#FFFFFF"
         WindowStartupLocation="CenterScreen">
 
     <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto,2*">
@@ -13,31 +14,32 @@
             <TextBlock Text="打印机自助连接工具"
                        FontSize="22"
                        FontWeight="Bold"
-                       Foreground="#00BFFF" />
+                       Foreground="#007ACC" />
         </StackPanel>
 
         <StackPanel Grid.Row="1" Spacing="6" Margin="0,0,0,12">
             <TextBlock x:Name="StatusText"
                        Text="正在检测网络环境..."
                        FontSize="14"
-                       Foreground="#AAAAAA" />
+                       Foreground="#555555" />
             <TextBlock x:Name="WorkplaceText"
                        Text=""
                        FontSize="15"
                        FontWeight="SemiBold"
-                       Foreground="#4EC9B0"
+                       Foreground="#2E8B57"
                        IsVisible="False" />
             <TextBlock x:Name="HintText"
                        Text=""
                        FontSize="13"
-                       Foreground="#CCCCCC"
+                       Foreground="#333333"
                        IsVisible="False" />
         </StackPanel>
 
         <Border Grid.Row="2"
-                BorderBrush="#333333"
+                Background="#FFFFFF"
+                BorderBrush="#CCCCCC"
                 BorderThickness="1"
-                CornerRadius="6"
+                CornerRadius="12"
                 Padding="10"
                 Margin="0,0,0,14">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -50,25 +52,29 @@
                    Text="安装日志"
                    FontSize="13"
                    FontWeight="SemiBold"
-                   Foreground="#CCCCCC"
+                   Foreground="#333333"
                    Margin="0,0,0,6" />
 
         <Border Grid.Row="4"
-                BorderBrush="#333333"
+                Background="#FFFFFF"
+                BorderBrush="#CCCCCC"
                 BorderThickness="1"
-                CornerRadius="6"
+                CornerRadius="12"
                 Padding="8">
             <ScrollViewer x:Name="LogScrollViewer"
                           VerticalScrollBarVisibility="Auto">
                 <TextBox x:Name="LogTextBox"
                          IsReadOnly="True"
+                         IsTabStop="False"
+                         Focusable="False"
+                         CaretBrush="Transparent"
                          TextWrapping="Wrap"
                          AcceptsReturn="True"
                          FontFamily="Consolas, monospace"
                          FontSize="12"
                          Background="Transparent"
                          BorderThickness="0"
-                         Foreground="#DDDDDD" />
+                         Foreground="#222222" />
             </ScrollViewer>
         </Border>
     </Grid>
