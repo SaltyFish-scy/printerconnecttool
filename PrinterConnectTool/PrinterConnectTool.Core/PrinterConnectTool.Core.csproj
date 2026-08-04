@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <RootNamespace>PrinterConnectTool</RootNamespace>
+        <AssemblyName>PrinterConnectTool.Core</AssemblyName>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    </PropertyGroup>
+
+    <!--
+        原项目通过 Config/workplaces.json、Drivers/*.zip、Scripts/*.ps1 嵌入资源来分发配置。
+        现在这些数据改由「打印机连接生成器」通过 Payload 追加到壳 EXE 尾部的方式分发，
+        因此 Core 不再嵌入任何具体职场/驱动/脚本数据，只保留通用业务逻辑。
+    -->
+
+</Project>
