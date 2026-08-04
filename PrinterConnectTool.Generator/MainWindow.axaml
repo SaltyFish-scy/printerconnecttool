@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PrinterConnectTool.Generator.MainWindow"
+        Title="打印机连接生成器"
+        Width="980"
+        Height="680"
+        MinWidth="800"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="10" RowDefinitions="Auto,*,Auto,100">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+            <Button Content="新建项目" Click="NewProject_Click" />
+            <Button Content="打开项目 (.json)" Click="OpenProject_Click" />
+            <Button Content="保存项目 (.json)" Click="SaveProject_Click" />
+            <Button Content="生成 EXE" Click="Generate_Click" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="280,*,*" MinHeight="0">
+            <DockPanel Grid.Column="0" LastChildFill="True">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="驱动包" FontWeight="Bold" FontSize="13" />
+                        <ListBox x:Name="DriversList" Height="110" SelectionChanged="DriversList_SelectionChanged" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Content="+ 添加" Click="AddDriver_Click" />
+                            <Button Content="- 删除" Click="RemoveDriver_Click" />
+                            <Button Content="编辑" Click="EditSelectedDriver_Click" />
+                        </StackPanel>
+
+                        <TextBlock Text="职场" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" />
+                        <ListBox x:Name="OfficesList" Height="110" SelectionChanged="OfficesList_SelectionChanged" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Content="+ 添加" Click="AddOffice_Click" />
+                            <Button Content="- 删除" Click="RemoveOffice_Click" />
+                            <Button Content="编辑" Click="EditSelectedOffice_Click" />
+                        </StackPanel>
+
+                        <TextBlock Text="打印机" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" />
+                        <ListBox x:Name="PrintersList" Height="110" SelectionChanged="PrintersList_SelectionChanged" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Content="+ 添加" Click="AddPrinter_Click" />
+                            <Button Content="- 删除" Click="RemovePrinter_Click" />
+                            <Button Content="编辑" Click="EditSelectedPrinter_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+
+            <Border Grid.Column="1" BorderBrush="#333333" BorderThickness="1" Padding="10" Margin="8,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="EditorPanel" Spacing="8" IsEnabled="False">
+                        <TextBlock x:Name="EditorTitle" Text="选择左侧项目进行编辑" FontWeight="Bold" FontSize="13" />
+
+                        <StackPanel x:Name="DriverFields" IsVisible="False" Spacing="6">
+                            <TextBlock Text="Brand（文件夹名）" FontSize="12" />
+                            <TextBox x:Name="DriverBrandText" />
+                            <TextBlock Text="显示名称" FontSize="12" />
+                            <TextBox x:Name="DriverDisplayNameText" />
+                            <TextBlock Text="ZIP 路径" FontSize="12" />
+                            <TextBox x:Name="DriverZipText" IsReadOnly="True" />
+                            <Button Content="浏览..." Click="BrowseDriverZip_Click" />
+                            <TextBlock Text="默认驱动名（需与 INF 一致）" FontSize="12" />
+                            <TextBox x:Name="DriverDefaultNameText" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="OfficeFields" IsVisible="False" Spacing="6">
+                            <TextBlock Text="职场名称" FontSize="12" />
+                            <TextBox x:Name="OfficeNameText" />
+                            <TextBlock Text="网关 IP" FontSize="12" />
+                            <TextBox x:Name="OfficeGatewayText" />
+                        </StackPanel>
+
+                        <StackPanel x:Name="PrinterFields" IsVisible="False" Spacing="6">
+                            <TextBlock Text="打印机名称" FontSize="12" />
+                            <TextBox x:Name="PrinterNameText" />
+                            <TextBlock Text="IP 地址" FontSize="12" />
+                            <TextBox x:Name="PrinterIpText" />
+                            <TextBlock Text="端口" FontSize="12" />
+                            <NumericUpDown x:Name="PrinterPortNumber" Minimum="1" Maximum="65535" Value="9100" />
+                            <TextBlock Text="所属职场" FontSize="12" />
+                            <ComboBox x:Name="PrinterOfficeCombo" />
+                            <TextBlock Text="驱动包" FontSize="12" />
+                            <ComboBox x:Name="PrinterDriverCombo" />
+                            <TextBlock Text="驱动名" FontSize="12" />
+                            <TextBox x:Name="PrinterDriverNameText" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Border Grid.Column="2" BorderBrush="#333333" BorderThickness="1" Padding="10" Margin="0,0,0,0">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="生成预览" FontWeight="Bold" FontSize="13" Margin="0,0,0,6" />
+                    <TextBox Grid.Row="1" x:Name="PreviewJson" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" FontFamily="Consolas, monospace" FontSize="11" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="2" x:Name="StatusText" Text="就绪" FontSize="12" Margin="0,8,0,4" />
+
+        <Border Grid.Row="3" BorderBrush="#333333" BorderThickness="1" Padding="6">
+            <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+                <TextBox x:Name="LogTextBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" FontFamily="Consolas, monospace" FontSize="11" Background="Transparent" BorderThickness="0" />
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>

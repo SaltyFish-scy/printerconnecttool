@@ -1,0 +1,24 @@
+# 构建产物
+bin/
+obj/
+publish/
+*.dll
+*.exe
+*.pdb
+
+# 规划文档与提示词（不进入仓库）
+docs/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE / 编辑器
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+
+# 日志
+*.log

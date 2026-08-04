@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PrinterConnectTool.Shell.MainWindow"
+        Title="打印机自助连接工具"
+        Width="720"
+        Height="540"
+        MinWidth="560"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto,2*">
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,12">
+            <TextBlock Text="打印机自助连接工具"
+                       FontSize="22"
+                       FontWeight="Bold"
+                       Foreground="#00BFFF" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,0,0,12">
+            <TextBlock x:Name="StatusText"
+                       Text="正在检测网络环境..."
+                       FontSize="14"
+                       Foreground="#AAAAAA" />
+            <TextBlock x:Name="WorkplaceText"
+                       Text=""
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       Foreground="#4EC9B0"
+                       IsVisible="False" />
+            <TextBlock x:Name="HintText"
+                       Text=""
+                       FontSize="13"
+                       Foreground="#CCCCCC"
+                       IsVisible="False" />
+        </StackPanel>
+
+        <Border Grid.Row="2"
+                BorderBrush="#333333"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="10"
+                Margin="0,0,0,14">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <UniformGrid x:Name="PrintersPanel"
+                             Columns="2" />
+            </ScrollViewer>
+        </Border>
+
+        <TextBlock Grid.Row="3"
+                   Text="安装日志"
+                   FontSize="13"
+                   FontWeight="SemiBold"
+                   Foreground="#CCCCCC"
+                   Margin="0,0,0,6" />
+
+        <Border Grid.Row="4"
+                BorderBrush="#333333"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="8">
+            <ScrollViewer x:Name="LogScrollViewer"
+                          VerticalScrollBarVisibility="Auto">
+                <TextBox x:Name="LogTextBox"
+                         IsReadOnly="True"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         FontFamily="Consolas, monospace"
+                         FontSize="12"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Foreground="#DDDDDD" />
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>
