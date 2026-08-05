@@ -64,5 +64,5 @@ PrinterConnectTool/              原工具源码（Console + Core + UI）
 
 ## 支持一下
 如果觉得本项目有用的话，求支持喝个水
-![输入图片说明](%E6%B1%82%E6%94%AF%E6%8C%81%E6%94%AF%E4%BB%98%E5%AE%9D.jpg)
-![输入图片说明](%E6%B1%82%E6%94%AF%E6%8C%81%E5%BE%AE%E4%BF%A1.png)
+
+![输入图片说明](%E6%B1%82%E6%94%AF%E6%8C%81.jpg)
