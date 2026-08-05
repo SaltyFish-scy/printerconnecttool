@@ -57,4 +57,6 @@ PrinterConnectTool/              原工具源码（Console + Core + UI）
 
 ## 开源协议
 
-本项目开源，欢迎提交 Issue 或 PR 改进。
+本项目采用 [Apache License 2.0](LICENSE)。
+
+复制分发修改等请保留作者署名。
