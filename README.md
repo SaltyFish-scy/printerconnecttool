@@ -59,4 +59,4 @@ PrinterConnectTool/              原工具源码（Console + Core + UI）
 
 本项目采用 [Apache License 2.0](LICENSE)。
 
-复制分发修改等请保留作者署名。
+复制分发修改项目及对应软件，请保留本项目作者署名。
