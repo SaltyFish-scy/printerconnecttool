@@ -115,12 +115,15 @@ public partial class MainWindow : Window
                 HintText.Text = $"职场 [{workplace.Name}] 暂无可用打印机配置。";
                 HintText.IsVisible = true;
                 _logger.Warning($"职场 [{workplace.Name}] 暂无可用打印机配置。");
+                AdjustWindowSizeForPrinters(0);
                 return;
             }
 
             HintText.Text = "请点击上方按钮选择要连接的打印机：";
             HintText.IsVisible = true;
             _logger.Info("请点击上方按钮选择要连接的打印机。");
+
+            AdjustWindowSizeForPrinters(workplace.Printers.Count);
 
             foreach (var printer in workplace.Printers)
             {
@@ -153,12 +156,12 @@ public partial class MainWindow : Window
                 var button = new Button
                 {
                     Content = $"{printer.Name}\nIP: {printer.Ip}",
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    VerticalAlignment = VerticalAlignment.Stretch,
+                    Width = 170,
+                    Height = 64,
                     HorizontalContentAlignment = HorizontalAlignment.Left,
                     VerticalContentAlignment = VerticalAlignment.Center,
-                    Padding = new Thickness(10, 6),
-                    Margin = new Thickness(4),
+                    Padding = new Thickness(8, 10),
+                    Margin = new Thickness(6),
                     FontSize = 12,
                     Foreground = new SolidColorBrush(Color.Parse("#004C8C")),
                     CornerRadius = new CornerRadius(10),
@@ -208,6 +211,33 @@ public partial class MainWindow : Window
             foreach (var child in PrintersPanel.Children)
                 if (child is Button button)
                     button.IsEnabled = enabled;
+        });
+    }
+
+    private void AdjustWindowSizeForPrinters(int printerCount)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            const double baseHeight = 360;
+            const double rowHeight = 76;
+            const int maxVisibleRows = 3;
+            const double buttonWidth = 170;
+            const double buttonMargin = 12;
+            const double paddingAndBorder = 48; // 14*2 margin + 10*2 padding
+
+            var rows = (printerCount + 3) / 4;
+            var visibleRows = Math.Clamp(rows, 1, maxVisibleRows);
+            var targetHeight = baseHeight + visibleRows * rowHeight;
+
+            var buttonsInFirstRow = Math.Min(printerCount, 4);
+            var targetWidth = buttonsInFirstRow * (buttonWidth + buttonMargin) - buttonMargin + paddingAndBorder + 40;
+            targetWidth = Math.Max(targetWidth, 520); // 最小宽度
+            targetWidth = Math.Min(targetWidth, 820); // 最大宽度（4 按钮）
+
+            this.Height = targetHeight;
+            this.MinHeight = targetHeight;
+            this.Width = targetWidth;
+            this.MinWidth = targetWidth;
         });
     }
 

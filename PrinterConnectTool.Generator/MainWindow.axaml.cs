@@ -202,13 +202,20 @@ public partial class MainWindow : Window
 
         if (file == null) return;
 
+        var outputPath = file.Path.LocalPath;
+        if (!outputPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            outputPath += ".exe";
+            AppendLog($"输出路径已自动补全为 .exe：{outputPath}");
+        }
+
         try
         {
             AppendLog("开始生成 EXE...");
             StatusText.Text = "正在生成...";
-            ShellPublisher.Publish(_project, file.Path.LocalPath);
+            ShellPublisher.Publish(_project, outputPath);
             StatusText.Text = "生成成功";
-            AppendLog($"已生成：{file.Path.LocalPath}");
+            AppendLog($"已生成：{outputPath}");
         }
         catch (Exception ex)
         {

@@ -2,14 +2,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="PrinterConnectTool.Shell.MainWindow"
         Title="打印机自助连接工具 - 项目来源：Gitee-一条小咸鱼"
-        Width="720"
-        Height="540"
-        MinWidth="560"
-        MinHeight="420"
+        Width="820"
+        Height="480"
+        MinWidth="700"
+        MinHeight="360"
+        MaxHeight="660"
         Background="#FFFFFF"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        SizeToContent="Height">
 
-    <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto,2*">
+    <Grid Margin="14" RowDefinitions="Auto,Auto,Auto,Auto,*">
         <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,12">
             <TextBlock Text="打印机自助连接工具"
                        FontSize="22"
@@ -42,9 +44,11 @@
                 CornerRadius="12"
                 Padding="10"
                 Margin="0,0,0,14">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <UniformGrid x:Name="PrintersPanel"
-                             Columns="2" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          MaxHeight="240">
+                <WrapPanel x:Name="PrintersPanel"
+                           Orientation="Horizontal"
+                           HorizontalAlignment="Left" />
             </ScrollViewer>
         </Border>
 
@@ -60,7 +64,8 @@
                 BorderBrush="#CCCCCC"
                 BorderThickness="1"
                 CornerRadius="12"
-                Padding="8">
+                Padding="8"
+                MinHeight="80">
             <ScrollViewer x:Name="LogScrollViewer"
                           VerticalScrollBarVisibility="Auto">
                 <TextBox x:Name="LogTextBox"
