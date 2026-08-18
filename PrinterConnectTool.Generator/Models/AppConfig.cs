@@ -11,6 +11,8 @@ public class AppConfig
 
 public class AppSettings
 {
+    [JsonPropertyName("title")] public string Title { get; set; } = "打印机自助连接工具";
+
     [JsonPropertyName("pingTimeoutMs")] public int PingTimeoutMs { get; set; } = 2000;
 
     [JsonPropertyName("overallTimeoutMs")] public int OverallTimeoutMs { get; set; } = 3000;

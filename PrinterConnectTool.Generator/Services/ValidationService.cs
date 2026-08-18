@@ -1,11 +1,89 @@
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.RegularExpressions;
 using PrinterConnectTool.Generator.Models;
 
 namespace PrinterConnectTool.Generator.Services;
 
 public static class ValidationService
 {
+    private static readonly Regex AllowedNameRegex = new("^[a-zA-Z0-9_-]+$", RegexOptions.Compiled);
+
+    public static bool IsValidBrand(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && AllowedNameRegex.IsMatch(value);
+    }
+
+    public static bool IsValidZipFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return false;
+
+        var name = Path.GetFileName(fileName);
+        if (!name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var withoutExt = name[..^4];
+        return !string.IsNullOrWhiteSpace(withoutExt) && AllowedNameRegex.IsMatch(withoutExt);
+    }
+
+    public static bool IsValidZipStructure(string zipPath, string brand)
+    {
+        if (string.IsNullOrWhiteSpace(zipPath) || !File.Exists(zipPath))
+            return false;
+        if (string.IsNullOrWhiteSpace(brand))
+            return false;
+
+        try
+        {
+            using var stream = File.OpenRead(zipPath);
+            return IsValidZipStructure(stream, brand);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static bool IsValidZipStructure(byte[] zipData, string brand)
+    {
+        if (zipData == null || zipData.Length == 0)
+            return false;
+        if (string.IsNullOrWhiteSpace(brand))
+            return false;
+
+        try
+        {
+            using var stream = new MemoryStream(zipData);
+            return IsValidZipStructure(stream, brand);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static bool IsValidZipStructure(Stream zipStream, string brand)
+    {
+        if (zipStream == null || string.IsNullOrWhiteSpace(brand))
+            return false;
+
+        try
+        {
+            using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read, leaveOpen: true);
+            foreach (var entry in archive.Entries)
+            {
+                if (entry.FullName.StartsWith(brand + "/", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+
+        return false;
+    }
+
     public static ValidationResult Validate(GeneratorProject project)
     {
         var result = new ValidationResult();
@@ -22,14 +100,28 @@ public static class ValidationService
         {
             if (string.IsNullOrWhiteSpace(driver.Brand))
                 result.AddError("驱动包 Brand 不能为空。");
+            else if (!IsValidBrand(driver.Brand))
+                result.AddError($"驱动包 Brand '{driver.Brand}' 只能包含英文、数字、短横线或下划线。");
             if (!brands.Add(driver.Brand))
                 result.AddError($"驱动包 Brand '{driver.Brand}' 重复。");
-            if (!File.Exists(driver.ZipFilePath))
-                result.AddError($"驱动包 '{driver.Brand}' 的 ZIP 文件不存在：{driver.ZipFilePath}");
+
+            if (driver.ZipData is { Length: > 0 } zipData)
+            {
+                if (!IsValidZipStructure(zipData, driver.Brand))
+                    result.AddError($"驱动包 '{driver.Brand}' 的 ZIP 顶层缺少与 Brand 同名的文件夹。");
+            }
+            else
+            {
+                if (!IsValidZipFileName(driver.ZipFilePath))
+                    result.AddError($"驱动包 '{driver.Brand}' 的 ZIP 文件名不合法，只能包含英文、数字、短横线或下划线，且以 .zip 结尾。");
+                else if (!File.Exists(driver.ZipFilePath))
+                    result.AddError($"驱动包 '{driver.Brand}' 的 ZIP 文件不存在：{driver.ZipFilePath}");
+                else if (!IsValidZipStructure(driver.ZipFilePath, driver.Brand))
+                    result.AddError($"驱动包 '{driver.Brand}' 的 ZIP 顶层缺少与 Brand 同名的文件夹。");
+            }
+
             if (string.IsNullOrWhiteSpace(driver.DefaultDriverName))
                 result.AddError($"驱动包 '{driver.Brand}' 的默认驱动名不能为空。");
-            if (driver.Brand.Any(c => !char.IsLetterOrDigit(c) && c != '_' && c != '-'))
-                result.AddError($"驱动包 Brand '{driver.Brand}' 只能包含字母、数字、下划线或连字符。");
         }
 
         var officeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

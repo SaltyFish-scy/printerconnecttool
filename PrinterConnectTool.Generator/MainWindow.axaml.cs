@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Loaded += OnLoaded;
+        ShellTitleText.Text = _project.ShellTitle;
         BindLists();
         SubscribeEditorEvents();
         UpdatePreview();
@@ -63,7 +64,9 @@ public partial class MainWindow : Window
 
     private void SubscribeEditorEvents()
     {
-        DriverBrandText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.Brand = DriverBrandText.Text ?? ""; UpdatePreview(); };
+        ShellTitleText.TextChanged += (_, _) => { _project.ShellTitle = ShellTitleText.Text ?? ""; UpdatePreview(); };
+
+        DriverBrandText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.Brand = DriverBrandText.Text ?? ""; UpdateBrandError(); if (_selectedItem is DriverPackage driver2) UpdateZipError(driver2); UpdatePreview(); };
         DriverDisplayNameText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.DisplayName = DriverDisplayNameText.Text ?? ""; UpdatePreview(); };
         DriverDefaultNameText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.DefaultDriverName = DriverDefaultNameText.Text ?? ""; UpdatePreview(); };
         OfficeNameText.TextChanged += (_, _) => { if (_selectedItem is OfficeDefinition o) o.Name = OfficeNameText.Text ?? ""; UpdatePreview(); };
@@ -170,12 +173,33 @@ public partial class MainWindow : Window
             FileTypeFilter = new[] { new FilePickerFileType("ZIP 压缩包") { Patterns = new[] { "*.zip" } } }
         });
 
-        if (files.Count > 0 && _selectedItem is DriverPackage driver)
+        if (files.Count == 0) return;
+        if (_selectedItem is not DriverPackage driver) return;
+
+        var path = files[0].Path.LocalPath;
+        if (!ValidationService.IsValidZipFileName(path))
         {
-            driver.ZipFilePath = files[0].Path.LocalPath;
-            DriverZipText.Text = driver.ZipFilePath;
-            UpdatePreview();
+            DriverZipError.Text = "ZIP 文件名只能包含英文、数字、短横线和下划线，且以 .zip 结尾。";
+            DriverZipError.IsVisible = true;
+            StatusText.Text = "选择的 ZIP 文件名不合法";
+            return;
         }
+
+        var brand = driver.Brand;
+        if (!ValidationService.IsValidZipStructure(path, brand))
+        {
+            DriverZipError.Text = $"ZIP 顶层缺少与 Brand “{brand}” 同名的文件夹，请检查压缩包结构。";
+            DriverZipError.IsVisible = true;
+            StatusText.Text = "选择的 ZIP 压缩包结构不正确";
+            return;
+        }
+
+        DriverZipError.IsVisible = false;
+        driver.ZipFilePath = path;
+        driver.ZipData = await File.ReadAllBytesAsync(path);
+        DriverZipText.Text = driver.ZipFilePath;
+        AppendLog($"已读取 ZIP 文件：{path} ({driver.ZipData.Length} 字节)");
+        UpdatePreview();
     }
 
     private async void Generate_Click(object? sender, RoutedEventArgs e)
@@ -257,6 +281,7 @@ public partial class MainWindow : Window
         if (files.Count == 0) return;
 
         _project = ProjectSerializer.Load(files[0].Path.LocalPath);
+        ShellTitleText.Text = _project.ShellTitle;
         BindLists();
         RefreshComboBoxes();
         ClearEditor();
@@ -267,6 +292,7 @@ public partial class MainWindow : Window
     private void NewProject_Click(object? sender, RoutedEventArgs e)
     {
         _project = new GeneratorProject();
+        ShellTitleText.Text = _project.ShellTitle;
         BindLists();
         RefreshComboBoxes();
         ClearEditor();
@@ -276,38 +302,32 @@ public partial class MainWindow : Window
 
     private void DriversList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        _selectedItem = DriversList.SelectedItem;
-        ShowEditor(_selectedItem);
+        ShowEditor(e.AddedItems.Count > 0 ? e.AddedItems[0] : null);
     }
 
     private void OfficesList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        _selectedItem = OfficesList.SelectedItem;
-        ShowEditor(_selectedItem);
+        ShowEditor(e.AddedItems.Count > 0 ? e.AddedItems[0] : null);
     }
 
     private void PrintersList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        _selectedItem = PrintersList.SelectedItem;
-        ShowEditor(_selectedItem);
+        ShowEditor(e.AddedItems.Count > 0 ? e.AddedItems[0] : null);
     }
 
     private void EditSelectedDriver_Click(object? sender, RoutedEventArgs e)
     {
-        _selectedItem = DriversList.SelectedItem;
-        ShowEditor(_selectedItem);
+        ShowEditor(DriversList.SelectedItem);
     }
 
     private void EditSelectedOffice_Click(object? sender, RoutedEventArgs e)
     {
-        _selectedItem = OfficesList.SelectedItem;
-        ShowEditor(_selectedItem);
+        ShowEditor(OfficesList.SelectedItem);
     }
 
     private void EditSelectedPrinter_Click(object? sender, RoutedEventArgs e)
     {
-        _selectedItem = PrintersList.SelectedItem;
-        ShowEditor(_selectedItem);
+        ShowEditor(PrintersList.SelectedItem);
     }
 
     private void ClearEditor()
@@ -316,11 +336,14 @@ public partial class MainWindow : Window
         DriverFields.IsVisible = false;
         OfficeFields.IsVisible = false;
         PrinterFields.IsVisible = false;
+        DriverBrandError.IsVisible = false;
+        DriverZipError.IsVisible = false;
         EditorTitle.Text = "选择左侧项目进行编辑";
     }
 
     private void ShowEditor(object? item)
     {
+        _selectedItem = item;
         ClearEditor();
         if (item == null) return;
 
@@ -335,6 +358,8 @@ public partial class MainWindow : Window
                 DriverDisplayNameText.Text = driver.DisplayName;
                 DriverZipText.Text = driver.ZipFilePath;
                 DriverDefaultNameText.Text = driver.DefaultDriverName;
+                UpdateBrandError();
+                UpdateZipError(driver);
                 break;
             case OfficeDefinition office:
                 EditorTitle.Text = "编辑职场";
@@ -370,6 +395,76 @@ public partial class MainWindow : Window
         {
             PreviewJson.Text = $"预览生成失败：{ex.Message}";
         }
+    }
+
+    private void UpdateBrandError()
+    {
+        var brand = DriverBrandText.Text ?? "";
+        if (string.IsNullOrWhiteSpace(brand) || ValidationService.IsValidBrand(brand))
+        {
+            DriverBrandError.IsVisible = false;
+            return;
+        }
+
+        DriverBrandError.Text = "Brand 只能包含英文、数字、短横线和下划线。";
+        DriverBrandError.IsVisible = true;
+    }
+
+    private void UpdateZipError(string zipPath, string brand)
+    {
+        if (string.IsNullOrWhiteSpace(zipPath))
+        {
+            DriverZipError.IsVisible = false;
+            return;
+        }
+
+        if (!ValidationService.IsValidZipFileName(zipPath))
+        {
+            DriverZipError.Text = "ZIP 文件名只能包含英文、数字、短横线和下划线，且以 .zip 结尾。";
+            DriverZipError.IsVisible = true;
+            return;
+        }
+
+        if (!ValidationService.IsValidBrand(brand))
+        {
+            DriverZipError.IsVisible = false;
+            return;
+        }
+
+        if (ValidationService.IsValidZipStructure(zipPath, brand))
+        {
+            DriverZipError.IsVisible = false;
+        }
+        else
+        {
+            DriverZipError.Text = $"ZIP 顶层缺少与 Brand “{brand}” 同名的文件夹，请检查压缩包结构。";
+            DriverZipError.IsVisible = true;
+        }
+    }
+
+    private void UpdateZipError(DriverPackage driver)
+    {
+        if (driver.ZipData is { Length: > 0 } zipData)
+        {
+            if (!ValidationService.IsValidBrand(driver.Brand))
+            {
+                DriverZipError.IsVisible = false;
+                return;
+            }
+
+            if (ValidationService.IsValidZipStructure(zipData, driver.Brand))
+            {
+                DriverZipError.IsVisible = false;
+            }
+            else
+            {
+                DriverZipError.Text = $"ZIP 顶层缺少与 Brand “{driver.Brand}” 同名的文件夹，请检查压缩包结构。";
+                DriverZipError.IsVisible = true;
+            }
+            return;
+        }
+
+        UpdateZipError(driver.ZipFilePath, driver.Brand);
     }
 
     private void AppendLog(string message)

@@ -19,7 +19,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\PrinterConnectTool\PrinterConnectTool.Core\PrinterConnectTool.Core.csproj" />
+        <ProjectReference Include="..\PrinterConnectTool\PrinterConnectTool.Core\PrinterConnectTool.Core.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -77,6 +77,11 @@ public partial class MainWindow : Window
             _logger.Info("Payload 已解压，正在加载配置...");
             var config = PayloadConfigLoader.Load(payloadRoot);
 
+            if (!string.IsNullOrWhiteSpace(config.Settings.Title))
+            {
+                HeaderTextBlock.Text = config.Settings.Title;
+            }
+
             _logger.Info("正在探测职场网络...");
             var detector = new WorkplaceDetector(config);
             var workplace = await detector.DetectAsync();

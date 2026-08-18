@@ -29,9 +29,17 @@ public static class PayloadBuilder
             foreach (var driver in project.Drivers)
             {
                 var entry = zip.CreateEntry($"Drivers/{driver.Brand}.zip");
-                using var src = File.OpenRead(driver.ZipFilePath);
                 using var dst = entry.Open();
-                src.CopyTo(dst);
+                if (driver.ZipData != null && driver.ZipData.Length > 0)
+                {
+                    using var src = new MemoryStream(driver.ZipData);
+                    src.CopyTo(dst);
+                }
+                else
+                {
+                    using var src = File.OpenRead(driver.ZipFilePath);
+                    src.CopyTo(dst);
+                }
             }
 
             for (int i = 0; i < project.Printers.Count; i++)
@@ -55,6 +63,7 @@ public static class PayloadBuilder
         {
             Settings = new AppSettings
             {
+                Title = project.ShellTitle,
                 PingTimeoutMs = project.PingTimeoutMs,
                 OverallTimeoutMs = project.OverallTimeoutMs
             }

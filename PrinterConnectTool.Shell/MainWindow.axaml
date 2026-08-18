@@ -8,12 +8,12 @@
         MinHeight="360"
         MaxHeight="660"
         Background="#FFFFFF"
-        WindowStartupLocation="CenterScreen"
-        SizeToContent="Height">
+        WindowStartupLocation="CenterScreen">
 
     <Grid Margin="14" RowDefinitions="Auto,Auto,Auto,Auto,*">
         <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,12">
-            <TextBlock Text="打印机自助连接工具"
+            <TextBlock x:Name="HeaderTextBlock"
+                       Text="打印机自助连接工具"
                        FontSize="22"
                        FontWeight="Bold"
                        Foreground="#007ACC" />

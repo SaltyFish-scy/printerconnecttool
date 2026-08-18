@@ -22,3 +22,6 @@ Thumbs.db
 
 # 日志
 *.log
+
+# 本地安全扫描产物
+.mimosa/

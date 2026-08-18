@@ -14,6 +14,8 @@
             <Button Content="打开项目 (.json)" Click="OpenProject_Click" />
             <Button Content="保存项目 (.json)" Click="SaveProject_Click" />
             <Button Content="生成 EXE" Click="Generate_Click" />
+            <TextBlock Text="标题：" VerticalAlignment="Center" FontSize="12" Margin="12,0,0,0" />
+            <TextBox x:Name="ShellTitleText" Width="240" FontSize="12" Watermark="员工打开 EXE 时显示的标题" />
         </StackPanel>
 
         <Grid Grid.Row="1" ColumnDefinitions="280,*,*" MinHeight="0">
@@ -55,11 +57,13 @@
                         <StackPanel x:Name="DriverFields" IsVisible="False" Spacing="6">
                             <TextBlock Text="Brand（文件夹名）" FontSize="12" />
                             <TextBox x:Name="DriverBrandText" />
+                            <TextBlock x:Name="DriverBrandError" Text="" Foreground="#D32F2F" FontSize="11" IsVisible="False" />
                             <TextBlock Text="显示名称" FontSize="12" />
                             <TextBox x:Name="DriverDisplayNameText" />
                             <TextBlock Text="ZIP 路径" FontSize="12" />
                             <TextBox x:Name="DriverZipText" IsReadOnly="True" />
                             <Button Content="浏览..." Click="BrowseDriverZip_Click" />
+                            <TextBlock x:Name="DriverZipError" Text="" Foreground="#D32F2F" FontSize="11" IsVisible="False" />
                             <TextBlock Text="默认驱动名（需与 INF 一致）" FontSize="12" />
                             <TextBox x:Name="DriverDefaultNameText" />
                         </StackPanel>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 
@@ -10,6 +11,11 @@ namespace PrinterConnectTool.Services;
 [SupportedOSPlatform("windows")]
 public static class AdminChecker
 {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int ShellExecuteW(IntPtr hwnd, string lpOperation, string lpFile, string? lpParameters, string? lpDirectory, int nShowCmd);
+
+    private const int SW_SHOWNORMAL = 1;
+
     /// <summary>
     ///     检查当前是否以管理员身份运行
     /// </summary>
@@ -37,24 +43,43 @@ public static class AdminChecker
             Environment.Exit(1);
         }
 
+        // 仅允许启动当前程序自身，避免命令注入风险
+        var fullPath = Path.GetFullPath(exePath);
+        if (!fullPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("当前程序路径异常，自动提权失败。");
+            Console.WriteLine("请右键点击此程序，选择\"以管理员身份运行\"。");
+            Console.ResetColor();
+            Console.WriteLine("按任意键退出...");
+            Console.ReadKey();
+            Environment.Exit(1);
+        }
+
         try
         {
-            var startInfo = new ProcessStartInfo
+            var result = ShellExecuteW(IntPtr.Zero, "runas", fullPath, null, null, SW_SHOWNORMAL);
+            if (result <= 32)
             {
-                FileName = exePath,
-                UseShellExecute = true,
-                Verb = "runas"
-            };
+                // 用户在 UAC 弹窗点了"否"或请求失败
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine();
+                Console.WriteLine("管理员权限被拒绝，程序无法继续运行。");
+                Console.WriteLine("请右键点击此程序，选择\"以管理员身份运行\"。");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("按任意键退出...");
+                Console.ReadKey();
+                Environment.Exit(1);
+            }
 
-            Process.Start(startInfo);
             Environment.Exit(0);
         }
         catch (Exception)
         {
-            // 用户在 UAC 弹窗点了"否"
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine();
-            Console.WriteLine("管理员权限被拒绝，程序无法继续运行。");
+            Console.WriteLine("管理员权限请求失败，程序无法继续运行。");
             Console.WriteLine("请右键点击此程序，选择\"以管理员身份运行\"。");
             Console.ResetColor();
             Console.WriteLine();

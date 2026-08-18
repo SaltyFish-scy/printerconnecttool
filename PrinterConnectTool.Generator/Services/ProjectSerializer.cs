@@ -18,6 +18,7 @@ public static class ProjectSerializer
         var dto = new GeneratorProjectDto
         {
             Version = project.Version,
+            ShellTitle = project.ShellTitle,
             PingTimeoutMs = project.PingTimeoutMs,
             OverallTimeoutMs = project.OverallTimeoutMs,
             Drivers = project.Drivers.ToList(),
@@ -39,6 +40,7 @@ public static class ProjectSerializer
         var project = new GeneratorProject
         {
             Version = dto.Version,
+            ShellTitle = dto.ShellTitle,
             PingTimeoutMs = dto.PingTimeoutMs,
             OverallTimeoutMs = dto.OverallTimeoutMs
         };
@@ -53,6 +55,7 @@ public static class ProjectSerializer
     private class GeneratorProjectDto
     {
         public string Version { get; set; } = "1.0";
+        public string ShellTitle { get; set; } = "打印机自助连接工具";
         public int PingTimeoutMs { get; set; }
         public int OverallTimeoutMs { get; set; }
         public List<DriverPackage> Drivers { get; set; } = new();
