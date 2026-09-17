@@ -81,12 +81,14 @@ public static class PayloadBuilder
             var officePrinters = project.Printers.Where(p => p.OfficeId == office.Id).ToList();
             foreach (var p in officePrinters)
             {
+                // Brand/驱动名实时从驱动包解析，驱动改名后自动跟随，不使用过期快照
+                var driver = project.FindDriver(p);
                 workplace.Printers.Add(new PrinterConfig
                 {
                     Name = p.Name,
                     Ip = p.Ip,
-                    DriverName = p.DriverName,
-                    Brand = p.DriverBrand,
+                    DriverName = project.EffectiveDriverName(p),
+                    Brand = driver?.Brand ?? p.DriverBrand,
                     Script = $"install_printer_{project.Printers.IndexOf(p) + 1}.ps1",
                     PortNumber = p.PortNumber
                 });

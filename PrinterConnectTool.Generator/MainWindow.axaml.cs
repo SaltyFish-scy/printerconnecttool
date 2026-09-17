@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -13,6 +14,13 @@ public partial class MainWindow : Window
     private GeneratorProject _project = new();
     private object? _selectedItem;
 
+    // ShowEditor 给编辑器字段赋值期间置位，阻止事件把同值写回模型造成连锁副作用
+    private bool _loadingEditor;
+    // RefreshComboBoxes 重建下拉框期间置位，阻止选中变化事件静默改写正在编辑的打印机
+    private bool _refreshingCombos;
+    // ShowEditor 清理其他列表选中态期间置位，防止 SelectionChanged 递归触发
+    private bool _syncingSelection;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -20,6 +28,7 @@ public partial class MainWindow : Window
         ShellTitleText.Text = _project.ShellTitle;
         BindLists();
         SubscribeEditorEvents();
+        SubscribeListClickFallback();
         UpdatePreview();
     }
 
@@ -42,53 +51,152 @@ public partial class MainWindow : Window
 
     private void RefreshComboBoxes()
     {
-        var selectedOffice = PrinterOfficeCombo.SelectedItem;
-        var selectedDriver = PrinterDriverCombo.SelectedItem;
+        _refreshingCombos = true;
+        try
+        {
+            var selectedOffice = PrinterOfficeCombo.SelectedItem;
+            var selectedDriver = PrinterDriverCombo.SelectedItem;
 
-        PrinterOfficeCombo.ItemsSource = _project.Offices;
-        PrinterOfficeCombo.DisplayMemberBinding = new Avalonia.Data.Binding(nameof(OfficeDefinition.Name));
+            PrinterOfficeCombo.ItemsSource = _project.Offices;
+            PrinterOfficeCombo.DisplayMemberBinding = new Avalonia.Data.Binding(nameof(OfficeDefinition.Name));
 
-        PrinterDriverCombo.ItemsSource = _project.Drivers;
-        PrinterDriverCombo.DisplayMemberBinding = new Avalonia.Data.Binding(nameof(DriverPackage.Brand));
+            PrinterDriverCombo.ItemsSource = _project.Drivers;
+            PrinterDriverCombo.DisplayMemberBinding = new Avalonia.Data.Binding(nameof(DriverPackage.Brand));
 
-        if (selectedOffice != null && _project.Offices.Contains(selectedOffice))
-            PrinterOfficeCombo.SelectedItem = selectedOffice;
-        else if (_project.Offices.Count > 0)
-            PrinterOfficeCombo.SelectedIndex = 0;
+            if (selectedOffice != null && _project.Offices.Contains(selectedOffice))
+                PrinterOfficeCombo.SelectedItem = selectedOffice;
+            else if (_project.Offices.Count > 0 && _selectedItem is PrinterDefinition)
+                PrinterOfficeCombo.SelectedIndex = 0;
 
-        if (selectedDriver != null && _project.Drivers.Contains(selectedDriver))
-            PrinterDriverCombo.SelectedItem = selectedDriver;
-        else if (_project.Drivers.Count > 0)
-            PrinterDriverCombo.SelectedIndex = 0;
+            if (selectedDriver != null && _project.Drivers.Contains(selectedDriver))
+                PrinterDriverCombo.SelectedItem = selectedDriver;
+            else if (_project.Drivers.Count > 0 && _selectedItem is PrinterDefinition)
+                PrinterDriverCombo.SelectedIndex = 0;
+        }
+        finally
+        {
+            _refreshingCombos = false;
+        }
+    }
+
+    /// <summary>
+    ///     ListBox 点击已选中项不会触发 SelectionChanged，这里用 PointerReleased 兜底：
+    ///     只要点中列表项且编辑器当前不是它，就强制切换编辑器。
+    /// </summary>
+    private void SubscribeListClickFallback()
+    {
+        DriversList.PointerReleased += (_, _) => ReopenIfNeeded(DriversList);
+        OfficesList.PointerReleased += (_, _) => ReopenIfNeeded(OfficesList);
+        PrintersList.PointerReleased += (_, _) => ReopenIfNeeded(PrintersList);
+    }
+
+    private void ReopenIfNeeded(ListBox list)
+    {
+        if (_syncingSelection) return;
+        if (list.SelectedItem != null && !ReferenceEquals(_selectedItem, list.SelectedItem))
+            ShowEditor(list.SelectedItem);
     }
 
     private void SubscribeEditorEvents()
     {
-        ShellTitleText.TextChanged += (_, _) => { _project.ShellTitle = ShellTitleText.Text ?? ""; UpdatePreview(); };
+        ShellTitleText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            _project.ShellTitle = ShellTitleText.Text ?? "";
+            UpdatePreview();
+        };
 
-        DriverBrandText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.Brand = DriverBrandText.Text ?? ""; UpdateBrandError(); if (_selectedItem is DriverPackage driver2) UpdateZipError(driver2); UpdatePreview(); };
-        DriverDisplayNameText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.DisplayName = DriverDisplayNameText.Text ?? ""; UpdatePreview(); };
-        DriverDefaultNameText.TextChanged += (_, _) => { if (_selectedItem is DriverPackage d) d.DefaultDriverName = DriverDefaultNameText.Text ?? ""; UpdatePreview(); };
-        OfficeNameText.TextChanged += (_, _) => { if (_selectedItem is OfficeDefinition o) o.Name = OfficeNameText.Text ?? ""; UpdatePreview(); };
-        OfficeGatewayText.TextChanged += (_, _) => { if (_selectedItem is OfficeDefinition o) o.GatewayIp = OfficeGatewayText.Text ?? ""; UpdatePreview(); };
-        PrinterNameText.TextChanged += (_, _) => { if (_selectedItem is PrinterDefinition p) p.Name = PrinterNameText.Text ?? ""; UpdatePreview(); };
-        PrinterIpText.TextChanged += (_, _) => { if (_selectedItem is PrinterDefinition p) p.Ip = PrinterIpText.Text ?? ""; UpdatePreview(); };
-        PrinterPortNumber.ValueChanged += (_, _) => { if (_selectedItem is PrinterDefinition p) p.PortNumber = (int)(PrinterPortNumber.Value ?? 9100); UpdatePreview(); };
-        PrinterOfficeCombo.SelectionChanged += (_, _) => { if (_selectedItem is PrinterDefinition p && PrinterOfficeCombo.SelectedItem is OfficeDefinition o) p.OfficeId = o.Id; UpdatePreview(); };
+        DriverBrandText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is DriverPackage d)
+            {
+                d.Brand = DriverBrandText.Text ?? "";
+                SyncPrintersDriverSnapshot(d);
+            }
+            UpdateBrandError();
+            if (_selectedItem is DriverPackage driver2) UpdateZipError(driver2);
+            UpdatePreview();
+        };
+        DriverDisplayNameText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is DriverPackage d) d.DisplayName = DriverDisplayNameText.Text ?? "";
+            UpdatePreview();
+        };
+        DriverDefaultNameText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is DriverPackage d) d.DefaultDriverName = DriverDefaultNameText.Text ?? "";
+            UpdatePreview();
+        };
+        OfficeNameText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is OfficeDefinition o) o.Name = OfficeNameText.Text ?? "";
+            UpdatePreview();
+        };
+        OfficeGatewayText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is OfficeDefinition o) o.GatewayIp = OfficeGatewayText.Text ?? "";
+            UpdatePreview();
+        };
+        PrinterNameText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is PrinterDefinition p) p.Name = PrinterNameText.Text ?? "";
+            UpdatePreview();
+        };
+        PrinterIpText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is PrinterDefinition p) p.Ip = PrinterIpText.Text ?? "";
+            UpdatePreview();
+        };
+        PrinterPortNumber.ValueChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is PrinterDefinition p) p.PortNumber = (int)(PrinterPortNumber.Value ?? 9100);
+            UpdatePreview();
+        };
+        PrinterOfficeCombo.SelectionChanged += (_, _) =>
+        {
+            if (_loadingEditor || _refreshingCombos) return;
+            if (_selectedItem is PrinterDefinition p && PrinterOfficeCombo.SelectedItem is OfficeDefinition o)
+                p.OfficeId = o.Id;
+            UpdatePreview();
+        };
         PrinterDriverCombo.SelectionChanged += (_, _) =>
         {
+            if (_loadingEditor || _refreshingCombos) return;
             if (_selectedItem is PrinterDefinition p && PrinterDriverCombo.SelectedItem is DriverPackage d)
             {
+                p.DriverId = d.Id;
                 p.DriverBrand = d.Brand;
-                if (string.IsNullOrWhiteSpace(PrinterDriverNameText.Text) || _project.Drivers.Any(x => x.DefaultDriverName == PrinterDriverNameText.Text))
+                // 驱动名未自定义（为空或仍是某个驱动的默认名）时跟随新驱动，否则保留用户自定义值
+                if (string.IsNullOrWhiteSpace(p.DriverName) || _project.Drivers.Any(x => x.DefaultDriverName == p.DriverName))
                 {
-                    p.DriverName = d.DefaultDriverName;
-                    PrinterDriverNameText.Text = d.DefaultDriverName;
+                    p.DriverName = "";
+                    PrinterDriverNameText.Text = "";
                 }
             }
             UpdatePreview();
         };
-        PrinterDriverNameText.TextChanged += (_, _) => { if (_selectedItem is PrinterDefinition p) p.DriverName = PrinterDriverNameText.Text ?? ""; UpdatePreview(); };
+        PrinterDriverNameText.TextChanged += (_, _) =>
+        {
+            if (_loadingEditor) return;
+            if (_selectedItem is PrinterDefinition p) p.DriverName = PrinterDriverNameText.Text ?? "";
+            UpdatePreview();
+        };
+    }
+
+    /// <summary>驱动 Brand 改动后，同步所有引用该驱动的打印机的冗余快照字段，保持项目文件一致。</summary>
+    private void SyncPrintersDriverSnapshot(DriverPackage driver)
+    {
+        foreach (var p in _project.Printers)
+            if (p.DriverId == driver.Id)
+                p.DriverBrand = driver.Brand;
     }
 
     private void AddDriver_Click(object? sender, RoutedEventArgs e)
@@ -118,8 +226,9 @@ public partial class MainWindow : Window
             Name = "新打印机",
             Ip = "10.0.0.10",
             OfficeId = office?.Id ?? "",
+            DriverId = driver?.Id ?? "",
             DriverBrand = driver?.Brand ?? "",
-            DriverName = driver?.DefaultDriverName ?? ""
+            DriverName = "" // 留空跟随驱动包默认驱动名
         };
         _project.Printers.Add(printer);
         PrintersList.SelectedItem = printer;
@@ -302,32 +411,20 @@ public partial class MainWindow : Window
 
     private void DriversList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_syncingSelection) return;
         ShowEditor(e.AddedItems.Count > 0 ? e.AddedItems[0] : null);
     }
 
     private void OfficesList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_syncingSelection) return;
         ShowEditor(e.AddedItems.Count > 0 ? e.AddedItems[0] : null);
     }
 
     private void PrintersList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_syncingSelection) return;
         ShowEditor(e.AddedItems.Count > 0 ? e.AddedItems[0] : null);
-    }
-
-    private void EditSelectedDriver_Click(object? sender, RoutedEventArgs e)
-    {
-        ShowEditor(DriversList.SelectedItem);
-    }
-
-    private void EditSelectedOffice_Click(object? sender, RoutedEventArgs e)
-    {
-        ShowEditor(OfficesList.SelectedItem);
-    }
-
-    private void EditSelectedPrinter_Click(object? sender, RoutedEventArgs e)
-    {
-        ShowEditor(PrintersList.SelectedItem);
     }
 
     private void ClearEditor()
@@ -344,40 +441,81 @@ public partial class MainWindow : Window
     private void ShowEditor(object? item)
     {
         _selectedItem = item;
+
+        // 三个列表的选中高亮互斥：编辑器切到哪类项，就清掉另外两个列表的选中态，
+        // 避免"另一个列表还亮着"造成误导；清理期间阻止 SelectionChanged 递归
+        _syncingSelection = true;
+        try
+        {
+            switch (item)
+            {
+                case DriverPackage:
+                    OfficesList.SelectedItem = null;
+                    PrintersList.SelectedItem = null;
+                    break;
+                case OfficeDefinition:
+                    DriversList.SelectedItem = null;
+                    PrintersList.SelectedItem = null;
+                    break;
+                case PrinterDefinition:
+                    DriversList.SelectedItem = null;
+                    OfficesList.SelectedItem = null;
+                    break;
+            }
+        }
+        finally
+        {
+            _syncingSelection = false;
+        }
+
         ClearEditor();
         if (item == null) return;
 
         EditorPanel.IsEnabled = true;
 
-        switch (item)
+        _loadingEditor = true;
+        try
         {
-            case DriverPackage driver:
-                EditorTitle.Text = "编辑驱动包";
-                DriverFields.IsVisible = true;
-                DriverBrandText.Text = driver.Brand;
-                DriverDisplayNameText.Text = driver.DisplayName;
-                DriverZipText.Text = driver.ZipFilePath;
-                DriverDefaultNameText.Text = driver.DefaultDriverName;
-                UpdateBrandError();
-                UpdateZipError(driver);
-                break;
-            case OfficeDefinition office:
-                EditorTitle.Text = "编辑职场";
-                OfficeFields.IsVisible = true;
-                OfficeNameText.Text = office.Name;
-                OfficeGatewayText.Text = office.GatewayIp;
-                break;
-            case PrinterDefinition printer:
-                EditorTitle.Text = "编辑打印机";
-                PrinterFields.IsVisible = true;
-                PrinterNameText.Text = printer.Name;
-                PrinterIpText.Text = printer.Ip;
-                PrinterPortNumber.Value = printer.PortNumber;
-                PrinterOfficeCombo.SelectedItem = _project.Offices.FirstOrDefault(o => o.Id == printer.OfficeId);
-                PrinterDriverCombo.SelectedItem = _project.Drivers.FirstOrDefault(d => d.Brand == printer.DriverBrand);
-                PrinterDriverNameText.Text = printer.DriverName;
-                break;
+            switch (item)
+            {
+                case DriverPackage driver:
+                    EditorTitle.Text = "编辑驱动包";
+                    DriverFields.IsVisible = true;
+                    DriverBrandText.Text = driver.Brand;
+                    DriverDisplayNameText.Text = driver.DisplayName;
+                    DriverZipText.Text = driver.ZipFilePath;
+                    DriverDefaultNameText.Text = driver.DefaultDriverName;
+                    break;
+                case OfficeDefinition office:
+                    EditorTitle.Text = "编辑职场";
+                    OfficeFields.IsVisible = true;
+                    OfficeNameText.Text = office.Name;
+                    OfficeGatewayText.Text = office.GatewayIp;
+                    break;
+                case PrinterDefinition printer:
+                    EditorTitle.Text = "编辑打印机";
+                    PrinterFields.IsVisible = true;
+                    PrinterNameText.Text = printer.Name;
+                    PrinterIpText.Text = printer.Ip;
+                    PrinterPortNumber.Value = printer.PortNumber;
+                    PrinterOfficeCombo.SelectedItem = _project.Offices.FirstOrDefault(o => o.Id == printer.OfficeId);
+                    // 按 DriverId 活引用解析，驱动改名后仍能找回；旧数据回退 Brand 匹配
+                    PrinterDriverCombo.SelectedItem = _project.FindDriver(printer);
+                    PrinterDriverNameText.Text = printer.DriverName;
+                    break;
+            }
         }
+        finally
+        {
+            _loadingEditor = false;
+        }
+
+        if (item is DriverPackage d)
+        {
+            UpdateBrandError();
+            UpdateZipError(d);
+        }
+        UpdatePreview();
     }
 
     private void UpdatePreview()
@@ -385,10 +523,26 @@ public partial class MainWindow : Window
         try
         {
             var config = PayloadBuilder.BuildAppConfig(_project);
-            PreviewJson.Text = System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions
+            // 预览除最终 workplaces.json 外，附带驱动包信息，保证任何字段的修改都有可见反馈
+            var preview = new
+            {
+                settings = config.Settings,
+                drivers = _project.Drivers.Select(d => new
+                {
+                    d.Brand,
+                    d.DisplayName,
+                    d.DefaultDriverName,
+                    zip = d.ZipData is { Length: > 0 } z
+                        ? $"已嵌入项目（{z.Length:N0} 字节）"
+                        : string.IsNullOrWhiteSpace(d.ZipFilePath) ? "（未选择 ZIP）" : d.ZipFilePath
+                }),
+                config.Workplaces
+            };
+            PreviewJson.Text = System.Text.Json.JsonSerializer.Serialize(preview, new System.Text.Json.JsonSerializerOptions
             {
                 WriteIndented = true,
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             });
         }
         catch (Exception ex)

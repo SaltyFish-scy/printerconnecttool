@@ -13,8 +13,8 @@ public static class ScriptGenerator
 
     public static void GenerateToStream(PrinterDefinition printer, GeneratorProject project, Stream output)
     {
-        var driver = project.Drivers.FirstOrDefault(d => d.Brand == printer.DriverBrand)
-                     ?? throw new InvalidOperationException($"找不到打印机 '{printer.Name}' 关联的驱动包 '{printer.DriverBrand}'。");
+        var driver = project.FindDriver(printer)
+                     ?? throw new InvalidOperationException($"找不到打印机 '{printer.Name}' 关联的驱动包（DriverId: {printer.DriverId}, Brand: {printer.DriverBrand}）。");
 
         var template = ReadTemplate();
         var driverFolder = @$"C:\Drivers\{driver.Brand}";
@@ -23,7 +23,7 @@ public static class ScriptGenerator
         var content = template
             .Replace("{PRINTER_IP}", EscapeSingleQuotes(printer.Ip))
             .Replace("{PRINTER_NAME}", EscapeSingleQuotes(printer.Name))
-            .Replace("{DRIVER_NAME}", EscapeSingleQuotes(printer.DriverName))
+            .Replace("{DRIVER_NAME}", EscapeSingleQuotes(project.EffectiveDriverName(printer)))
             .Replace("{DRIVER_FOLDER}", EscapeSingleQuotes(driverFolder))
             .Replace("{PORT_NAME}", EscapeSingleQuotes(portName));
 

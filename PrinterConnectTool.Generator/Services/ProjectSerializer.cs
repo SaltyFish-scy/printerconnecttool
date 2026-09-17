@@ -15,9 +15,20 @@ public static class ProjectSerializer
 
     public static void Save(GeneratorProject project, string filePath)
     {
+        // 保存前同步冗余快照字段，让 1.3 及更早版本的生成器打开新文件时仍能看到正确的驱动关联
+        foreach (var p in project.Printers)
+        {
+            var driver = project.FindDriver(p);
+            if (driver != null)
+            {
+                p.DriverId = driver.Id;
+                p.DriverBrand = driver.Brand;
+            }
+        }
+
         var dto = new GeneratorProjectDto
         {
-            Version = project.Version,
+            Version = GeneratorProject.CurrentVersion,
             ShellTitle = project.ShellTitle,
             PingTimeoutMs = project.PingTimeoutMs,
             OverallTimeoutMs = project.OverallTimeoutMs,
@@ -47,9 +58,32 @@ public static class ProjectSerializer
 
         foreach (var d in dto.Drivers) project.Drivers.Add(d);
         foreach (var o in dto.Offices) project.Offices.Add(o);
-        foreach (var p in dto.Printers) project.Printers.Add(p);
+        foreach (var p in dto.Printers)
+        {
+            MigratePrinter(project, p);
+            project.Printers.Add(p);
+        }
 
         return project;
+    }
+
+    /// <summary>
+    ///     兼容 1.3 及更早版本：旧文件中打印机只有 DriverBrand 快照、没有 DriverId，
+    ///     且驱动包没有 Id。加载时按 Brand 找回驱动并补上活引用。
+    ///     Brand 已匹配不到驱动的打印机保持原样，由生成前校验拦截提示。
+    /// </summary>
+    private static void MigratePrinter(GeneratorProject project, PrinterDefinition printer)
+    {
+        if (string.IsNullOrEmpty(printer.DriverId) && !string.IsNullOrEmpty(printer.DriverBrand))
+        {
+            var match = project.Drivers.FirstOrDefault(d => d.Brand == printer.DriverBrand);
+            if (match != null)
+                printer.DriverId = match.Id;
+        }
+
+        var resolved = project.FindDriver(printer);
+        if (resolved != null)
+            printer.DriverBrand = resolved.Brand;
     }
 
     private class GeneratorProjectDto

@@ -27,7 +27,6 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Button Content="+ 添加" Click="AddDriver_Click" />
                             <Button Content="- 删除" Click="RemoveDriver_Click" />
-                            <Button Content="编辑" Click="EditSelectedDriver_Click" />
                         </StackPanel>
 
                         <TextBlock Text="职场" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" />
@@ -35,7 +34,6 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Button Content="+ 添加" Click="AddOffice_Click" />
                             <Button Content="- 删除" Click="RemoveOffice_Click" />
-                            <Button Content="编辑" Click="EditSelectedOffice_Click" />
                         </StackPanel>
 
                         <TextBlock Text="打印机" FontWeight="Bold" FontSize="13" Margin="0,10,0,0" />
@@ -43,7 +41,6 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Button Content="+ 添加" Click="AddPrinter_Click" />
                             <Button Content="- 删除" Click="RemovePrinter_Click" />
-                            <Button Content="编辑" Click="EditSelectedPrinter_Click" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
@@ -87,7 +84,7 @@
                             <TextBlock Text="驱动包" FontSize="12" />
                             <ComboBox x:Name="PrinterDriverCombo" />
                             <TextBlock Text="驱动名" FontSize="12" />
-                            <TextBox x:Name="PrinterDriverNameText" />
+                            <TextBox x:Name="PrinterDriverNameText" Watermark="留空则使用驱动包的默认驱动名" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

@@ -146,10 +146,10 @@ public static class ValidationService
                 result.AddError($"打印机 '{printer.Name}' 的 IP 格式不正确。");
             if (project.Offices.All(o => o.Id != printer.OfficeId))
                 result.AddError($"打印机 '{printer.Name}' 未关联有效职场。");
-            if (project.Drivers.All(d => d.Brand != printer.DriverBrand))
+            if (project.FindDriver(printer) == null)
                 result.AddError($"打印机 '{printer.Name}' 未关联有效驱动包。");
-            if (string.IsNullOrWhiteSpace(printer.DriverName))
-                result.AddError($"打印机 '{printer.Name}' 的驱动名不能为空。");
+            if (string.IsNullOrWhiteSpace(project.EffectiveDriverName(printer)))
+                result.AddError($"打印机 '{printer.Name}' 的驱动名为空，且关联驱动包未设置默认驱动名。");
             if (printer is { PortNumber: < 1 or > 65535 })
                 result.AddError($"打印机 '{printer.Name}' 的端口号必须在 1-65535 之间。");
         }
