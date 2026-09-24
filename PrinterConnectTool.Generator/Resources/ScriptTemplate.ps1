@@ -37,9 +37,28 @@ if ($infFiles.Count -eq 0) {
     pause
     exit 1
 }
-$InfPath = $infFiles[0].FullName
+# 从多个 INF 中选出真正的打印机驱动（Class=Printer 且包含驱动名型号定义）
+$InfPath = $null
+$driverNamePattern = '"' + [regex]::Escape($DriverName) + '"\s*='
+$printerInfs = @()
+foreach ($inf in $infFiles) {
+    $infContent = Get-Content -Path $inf.FullName -Raw -ErrorAction SilentlyContinue
+    if ($null -eq $infContent) { continue }
+    if ($infContent -match '(?im)^\s*Class\s*=\s*Printer') {
+        $printerInfs += $inf
+        if ($null -eq $InfPath -and $infContent -match $driverNamePattern) {
+            $InfPath = $inf.FullName
+        }
+    }
+}
+if ($null -eq $InfPath -and $printerInfs.Count -gt 0) {
+    $InfPath = $printerInfs[0].FullName
+}
+if ($null -eq $InfPath) {
+    $InfPath = $infFiles[0].FullName
+}
 Write-Host ''
-Write-Host "找到驱动: $($infFiles[0].Name)" -ForegroundColor Green
+Write-Host "找到驱动: $(Split-Path -Leaf $InfPath)" -ForegroundColor Green
 
 # ==================== 1. 清理同名打印机 ====================
 Write-Host ''
@@ -118,7 +137,13 @@ $printuiArgs = @(
     '/m', ('"' + $DriverName + '"')
 )
 
-Start-Process -FilePath 'rundll32.exe' -ArgumentList $printuiArgs -Wait -WindowStyle Hidden
+$printuiProcess = Start-Process -FilePath 'rundll32.exe' -ArgumentList $printuiArgs -PassThru -WindowStyle Hidden
+if (-not $printuiProcess.WaitForExit(300000)) {
+    Write-Host ''
+    Write-Host '警告：打印机安装进程超时（5 分钟），已强制结束。' -ForegroundColor Red
+    Write-Host '通常是 printui 弹出了错误对话框，请检查驱动名与 INF 是否匹配。' -ForegroundColor Yellow
+    try { $printuiProcess.Kill() } catch {}
+}
 Start-Sleep -Seconds 3
 
 $installed = Get-Printer -Name $PrinterName -ErrorAction SilentlyContinue

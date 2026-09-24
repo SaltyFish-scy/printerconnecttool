@@ -122,6 +122,8 @@ public static class ValidationService
 
             if (string.IsNullOrWhiteSpace(driver.DefaultDriverName))
                 result.AddError($"驱动包 '{driver.Brand}' 的默认驱动名不能为空。");
+            else if (!HasPrinterDriverInf(driver))
+                result.AddError($"驱动包 '{driver.Brand}' 中未找到 Class=Printer 且包含型号 \"{driver.DefaultDriverName}\" 的 INF，生成的安装工具会选错驱动。");
         }
 
         var officeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -160,5 +162,58 @@ public static class ValidationService
     private static bool IsValidIp(string ip)
     {
         return IPAddress.TryParse(ip, out var addr) && addr.AddressFamily == AddressFamily.InterNetwork;
+    }
+
+    private static bool HasPrinterDriverInf(DriverPackage driver)
+    {
+        try
+        {
+            if (driver.ZipData is { Length: > 0 } zipData)
+            {
+                using var stream = new MemoryStream(zipData);
+                return HasPrinterDriverInf(stream, driver.Brand, driver.DefaultDriverName);
+            }
+            if (!string.IsNullOrWhiteSpace(driver.ZipFilePath) && File.Exists(driver.ZipFilePath))
+            {
+                using var stream = File.OpenRead(driver.ZipFilePath);
+                return HasPrinterDriverInf(stream, driver.Brand, driver.DefaultDriverName);
+            }
+        }
+        catch
+        {
+        }
+        return false;
+    }
+
+    private static bool HasPrinterDriverInf(Stream zipStream, string brand, string driverName)
+    {
+        var classRegex = new Regex(@"^\s*Class\s*=\s*Printer", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        var modelRegex = new Regex("\"" + Regex.Escape(driverName) + "\"\\s*=", RegexOptions.IgnoreCase);
+
+        using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read, leaveOpen: true);
+        foreach (var entry in archive.Entries)
+        {
+            if (!entry.FullName.StartsWith(brand + "/", StringComparison.OrdinalIgnoreCase)) continue;
+            var relative = entry.FullName[(brand.Length + 1)..];
+            if (relative.Contains('/') || !relative.EndsWith(".inf", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var content = ReadEntryText(entry);
+            if (classRegex.IsMatch(content) && modelRegex.IsMatch(content))
+                return true;
+        }
+        return false;
+    }
+
+    private static string ReadEntryText(ZipArchiveEntry entry)
+    {
+        using var stream = entry.Open();
+        using var ms = new MemoryStream();
+        stream.CopyTo(ms);
+        var bytes = ms.ToArray();
+        if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            return System.Text.Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+        if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            return System.Text.Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+        return System.Text.Encoding.UTF8.GetString(bytes);
     }
 }
